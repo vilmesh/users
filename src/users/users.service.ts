@@ -1,38 +1,40 @@
-import { Injectable } from '@nestjs/common';
-import { v4 } from 'uuid';
-import { User, USER_ROLE } from './users.model';
+import { GetUserFilterDto } from './dto/get-user-filter.dto';
+import { UsersRepository } from './users.repository';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { User } from './user.entity';
+import { userInfo } from 'os';
 
 @Injectable()
 export class UsersService {
-  private users: User[] = [
-    {
-      id: v4(),
-      name: 'Vic',
-      age: 30,
-      role: USER_ROLE.TEACHER,
-      active: true,
-    },
-    {
-      id: v4(),
-      name: 'Vic2',
-      age: 35,
-      role: USER_ROLE.STUDENT,
-      active: false,
-    },
-    {
-      id: v4(),
-      name: 'Vic3',
-      age: 32,
-      role: USER_ROLE.TEACHER,
-      active: true,
-    },
-  ];
+  constructor(private usersRepository: UsersRepository) { }
 
-  public getAllUsers() {
-    return this.users;
+  public getAllUsers(filter: GetUserFilterDto): Promise<User[]> {
+    return this.usersRepository.getAllUsers(filter);
   }
 
-  public getUserById(id: string) {
-    return this.users.find((user) => user.id === id);
+  public async getUserById(id: string): Promise<User> {
+    const user = await this.usersRepository.getUserById(id);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+    return user;
+  }
+
+  public async deleteUserById(id: string): Promise<void> {
+    const user = await this.usersRepository.delete(id);
+    if (user.affected === 0) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+  }
+
+  public createUser(user: CreateUserDto) {
+    return this.usersRepository.createUser(user);
+  }
+
+  public async putUserById(id: string, body: UpdateUserDto) {
+    const user = await this.getUserById(id);
+    return this.usersRepository.save({ ...user, ...body });
   }
 }
